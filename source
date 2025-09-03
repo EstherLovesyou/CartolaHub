@@ -628,5 +628,110 @@ end)
 
 -- Label após Auto Unban
 pcall(function()
-    HouseTab:AddLabel("Te desbane automaticamente das Casas")
+    HouseTab:AddLabel("Autounban das houses by Esther")
 end)
+
+
+local Tab = Window:MakeTab({"Lag", "home"})
+-- Shutdown Custom Section
+local Section = Tab:AddSection({
+    Name = "Shutdown"
+})
+
+-- Shutdown Server Button
+Tab:AddButton({
+    Name = "Shutdown",
+    Callback = function()
+        for m = 1, 495 do
+            local args = {
+                [1] = "PickingTools",
+                [2] = "FireHose"
+            }
+            game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(args))
+            local args = {
+                [1] = "FireHose",
+                [2] = "DestroyFireHose"
+            }
+            game:GetService("Players").LocalPlayer.Backpack.FireHose.ToolSound:FireServer(unpack(args))
+        end
+        local oldcf = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(999999999.414, -475, 999999999.414)
+        local rootpart = game.Players.LocalPlayer.Character.HumanoidRootPart
+        repeat wait() until rootpart.Parent == nil
+        repeat wait() until game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = oldcf
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Script de Dupe",
+            Text = "Shutdown Concluído, Agora Vai Desligar",
+            Button1 = "Ok",
+            Duration = 5
+        })
+        wait()
+        for _, ergeg in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
+            if ergeg.Name == "FireHose" then
+                ergeg.Parent = game.Players.LocalPlayer.Character
+            end
+        end
+        wait(0.2)
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Script de Dupe",
+            Text = "Iniciando duplicação, seja paciente",
+            Button1 = "Ok",
+            Duration = 5
+        })
+        wait(0.5)
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(9999, -475, 9999)
+    end
+})
+
+-- Lag Laptop Section
+local Section = Tab:AddSection({
+    Name = "Lag"
+})
+
+-- Toggle State for Lag Laptop
+local toggles = { LagLaptop = false }
+
+-- Function to Simulate Normal Click
+local function clickNormally(object)
+    local clickDetector = object:FindFirstChildWhichIsA("ClickDetector")
+    if clickDetector then
+        fireclickdetector(clickDetector)
+    end
+end
+
+-- Function to Lag Game with Laptop
+local function lagarJogoLaptop(laptopPath, maxTeleports)
+    if laptopPath then
+        local teleportCount = 0
+        while teleportCount < maxTeleports and toggles.LagLaptop do
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = laptopPath.CFrame
+            clickNormally(laptopPath)
+            teleportCount = teleportCount + 1
+            wait(0.0001)
+        end
+    else
+        warn("Laptop não encontrado.")
+    end
+end
+
+-- Lag Laptop Toggle
+Tab:AddToggle({
+    Name = "Lag",
+    Default = false,
+    Callback = function(state)
+        toggles.LagLaptop = state
+        if state then
+            local laptopPath = workspace:FindFirstChild("WorkspaceCom"):FindFirstChild("001_GiveTools"):FindFirstChild("Laptop")
+            if laptopPath then
+                spawn(function()
+                    lagarJogoLaptop(laptopPath, 999999999)
+                end)
+            else
+                warn("Laptop não encontrado.")
+            end
+        else
+            print("Lag com Laptop desativado.")
+        end
+    end
+})
