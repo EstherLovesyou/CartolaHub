@@ -1,0 +1,416 @@
+-- Cartola Hub (refatorado) - by EstherDeveloper and Davi999 (melhorado)
+-- Nota: mantenha CONFIRM_DESTRUCTIVE = false até ter certeza do que vai executar.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TextChatService = game:GetService("TextChatService")
+
+local cartolalib = loadstring(game:HttpGet("https://raw.githubusercontent.com/wx-sources/CartolaLibrary/refs/heads/main/Redzhubui%20(1).txt"))()
+local Window = cartolalib:MakeWindow({
+    Title = "Cartola Hub",
+    SubTitle = "by EstherDeveloper and Davi999",
+    SaveFolder = "CartolaLibrary"
+})
+
+-- Configurações de segurança
+local CONFIRM_DESTRUCTIVE = true -- Mude PARA true APENAS se tiver certeza absoluta
+local DEBOUNCE = {}
+local function debounce(name, delay)
+    if DEBOUNCE[name] and tick() - DEBOUNCE[name] < (delay or 1) then return true end
+    DEBOUNCE[name] = tick()
+    return false
+end
+
+-- Helpers para remotes
+local function getRE()
+    return ReplicatedStorage:FindFirstChild("RE")
+end
+local function getRemote(name)
+    local RE = getRE()
+    if not RE then return nil end
+    return RE:FindFirstChild(name)
+end
+
+-- Player / Character refs
+local LocalPlayer = Players.LocalPlayer
+local function getCharacter(player)
+    player = player or LocalPlayer
+    return player.Character or player.CharacterAdded:Wait()
+end
+
+-- UI: Dropdown de jogadores (carregado inicialmente)
+local playerNames = {}
+for _, p in ipairs(Players:GetPlayers()) do table.insert(playerNames, p.Name) end
+
+local selectedPlayerName = playerNames[1] or nil
+local Dropdown = Window:MakeTab({"Main", "home"}):AddDropdown({
+    Name = "Selecionar Jogador",
+    Description = "Escolha um jogador da lista",
+    Options = playerNames,
+    Default = playerNames[1] or "",
+    Callback = function(Value)
+        selectedPlayerName = Value
+        print("Jogador selecionado:", Value)
+    end
+})
+
+-- Atualizar lista de jogadores automaticamente (apenas faz log; a API da lib pode variar)
+Players.PlayerAdded:Connect(function(p)
+    table.insert(playerNames, p.Name)
+    print("[UI] Jogador entrou:", p.Name, "- reabra dropdown se quiser atualizar visualmente.")
+end)
+Players.PlayerRemoving:Connect(function(p)
+    for i,v in ipairs(playerNames) do if v == p.Name then table.remove(playerNames, i); break end end
+    print("[UI] Jogador saiu:", p.Name, "- reabra dropdown se quiser atualizar visualmente.")
+end)
+
+-- ====== Sistema de Arma (Assault) ======
+local function requestTool(toolName)
+    local toolRemote = getRemote("1Too1l")
+    if not toolRemote then return false end
+    local ok, res = pcall(function() return toolRemote:InvokeServer("PickingTools", toolName) end)
+    return ok and res
+end
+
+local function clearTools()
+    local clearRemote = getRemote("1Clea1rTool1s")
+    if clearRemote then
+        pcall(function() clearRemote:FireServer("ClearAllTools") end)
+    end
+end
+
+local function hasTool(toolName)
+    local char = getCharacter(LocalPlayer)
+    return (LocalPlayer.Backpack:FindFirstChild(toolName) ~= nil) or (char and char:FindFirstChild(toolName) ~= nil)
+end
+
+local function equipTool(toolName)
+    local char = getCharacter(LocalPlayer)
+    local tool = LocalPlayer.Backpack:FindFirstChild(toolName) or (char and char:FindFirstChild(toolName))
+    if tool and char then
+        local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+        if humanoid then
+            humanoid:EquipTool(tool)
+            return true
+        end
+    end
+    return false
+end
+
+local function getGunScript(toolName)
+    local char = getCharacter(LocalPlayer)
+    local tool = (char and char:FindFirstChild(toolName)) or LocalPlayer.Backpack:FindFirstChild(toolName)
+    if tool then
+        return tool:FindFirstChild("GunScript_Local")
+    end
+    return nil
+end
+
+local function safeFire(targetPart, power, damage)
+    if not targetPart then return false end
+    local fireRemote = getRemote("1Gu1n")
+    if not fireRemote then return false end
+    local gunScript = getGunScript("Assault")
+    if not gunScript then return false end
+    local args = {
+        targetPart,
+        targetPart,
+        Vector3.new(power or 1e14, power or 1e14, power or 1e14),
+        targetPart.Position,
+        gunScript:FindFirstChild("MuzzleEffect"),
+        gunScript:FindFirstChild("HitEffect"),
+        0,
+        0,
+        { false },
+        {
+            damage or 25,
+            Vector3.new(1000,1000,1000),
+            BrickColor.new(29),
+            0.25,
+            Enum.Material.SmoothPlastic,
+            0.25
+        },
+        true,
+        false
+    }
+    pcall(function() fireRemote:FireServer(unpack(args)) end)
+    return true
+end
+
+local function equipAndEnsure(toolName)
+    if hasTool(toolName) then
+        equipTool(toolName)
+        return true
+    end
+    clearTools()
+    requestTool(toolName)
+    local tries = 0
+    while not hasTool(toolName) and tries < 20 do
+        task.wait(0.1); tries = tries + 1
+    end
+    if hasTool(toolName) then
+        equipTool(toolName)
+        return true
+    end
+    return false
+end
+
+-- Annoy: dispara contra jogador selecionado repetidamente (com intervalo controlado)
+local ANN0Y_CONFIG = { power = 1e14, damage = 999999, interval = 0.15 } -- intervalo aumentado para reduzir load
+
+local function getSelectedTarget()
+    if not selectedPlayerName then return nil end
+    local p = Players:FindFirstChild(selectedPlayerName)
+    if p and p.Character then
+        local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+        local humanoid = p.Character:FindFirstChild("Humanoid")
+        if hrp and humanoid and humanoid.Health > 0 then
+            return {player = p, part = hrp}
+        end
+    end
+    return nil
+end
+
+local function AnnoyLoop()
+    if debounce("AnnoyLoop", 1) then return end
+    task.spawn(function()
+        if not equipAndEnsure("Assault") then
+            warn("Não foi possível equipar Assault.")
+            return
+        end
+        while true do
+            local target = getSelectedTarget()
+            if target and target.part then
+                safeFire(target.part, ANN0Y_CONFIG.power, ANN0Y_CONFIG.damage)
+                local head = target.player.Character and target.player.Character:FindFirstChild("Head")
+                if head then safeFire(head, ANN0Y_CONFIG.power, ANN0Y_CONFIG.damage) end
+                local torso = target.player.Character and (target.player.Character:FindFirstChild("Torso") or target.player.Character:FindFirstChild("UpperTorso"))
+                if torso then safeFire(torso, ANN0Y_CONFIG.power, ANN0Y_CONFIG.damage) end
+            else
+                -- sem alvo válido: tenta atualizar alvo depois
+                task.wait(1)
+            end
+            task.wait(ANN0Y_CONFIG.interval)
+        end
+    end)
+end
+
+-- ====== Tornado PirateFree (refatorado) ======
+local function TornadoPirateFree()
+    if TextChatService and TextChatService.TextChannels and TextChatService.TextChannels.RBXGeneral then
+        pcall(function() TextChatService.TextChannels.RBXGeneral:SendAsync("[⚠️AVISO] UM TORNADO SURGIU! Cartola Hub by Esther") end)
+    end
+
+    local RE = getRE()
+    local soundRemote = RE and RE:FindFirstChild("1Gu1nSound1s")
+    local selectedAudioID = 9068077052
+
+    -- Tocar áudio simples e local (com tentativa de replicar via remote)
+    task.spawn(function()
+        for i = 1, 5 do
+            pcall(function()
+                if soundRemote then soundRemote:FireServer(workspace, selectedAudioID, 1) end
+                local sound = Instance.new("Sound")
+                sound.SoundId = "rbxassetid://" .. tostring(selectedAudioID)
+                local char = getCharacter(LocalPlayer)
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    sound.Parent = char.HumanoidRootPart
+                    sound:Play()
+                    task.wait(1.5)
+                    sound:Destroy()
+                end
+            end)
+        end
+    end)
+
+    -- Spawn barco seguro (valida existência dos remotes)
+    if RE and RE:FindFirstChild("1Ca1r") then
+        pcall(function()
+            local char = getCharacter(LocalPlayer)
+            char.HumanoidRootPart.CFrame = CFrame.new(1754, -2, 58)
+            task.wait(0.5)
+            RE["1Ca1r"]:FireServer("PickingBoat", "PirateFree")
+        end)
+    else
+        warn("Remote 1Ca1r não encontrado; spawn do barco pode falhar.")
+    end
+
+    -- tentativa básica de sentar no carro/vessel (não assume estrutura complexa)
+    task.delay(1, function()
+        local vehicles = workspace:FindFirstChild("Vehicles")
+        if not vehicles then return end
+        local car = vehicles:FindFirstChild(LocalPlayer.Name .. "Car")
+        if not car or not car.PrimaryPart then return end
+        local seat = car:FindFirstChildWhichIsA("VehicleSeat") or (car:FindFirstChild("Body") and car.Body:FindFirstChildWhichIsA("VehicleSeat"))
+        if not seat then return end
+        local char = getCharacter(LocalPlayer)
+        repeat
+            char.HumanoidRootPart.CFrame = seat.CFrame * CFrame.new(0, 1, 0)
+            task.wait(0.1)
+        until char.Humanoid.SeatPart == seat
+        -- Ejetar após 4s
+        task.delay(4, function()
+            if char and char.Humanoid then
+                char.Humanoid.Sit = false
+                char.HumanoidRootPart.CFrame = CFrame.new(0,0,0)
+            end
+        end)
+        -- movimento simplificado do barco (uso de Heartbeat)
+        local waypoints = {
+            Vector3.new(-16, 0, -47),
+            Vector3.new(-110, 0, -45),
+            Vector3.new(16, 0, -55),
+        }
+        local idx = 1
+        local speed = 15
+        local progress = 0
+        local function lerp(a,b,t) return a:lerp(b,t) end
+        local currentCar = car
+        local conn
+        conn = RunService.Heartbeat:Connect(function(dt)
+            if not currentCar or not currentCar.PrimaryPart then
+                conn:Disconnect()
+                return
+            end
+            local a = waypoints[idx]
+            local b = waypoints[(idx % #waypoints) + 1]
+            progress = progress + (speed * dt) / (a - b).Magnitude
+            if progress >= 1 then
+                progress = 0
+                idx = (idx % #waypoints) + 1
+            end
+            local newPos = lerp(CFrame.new(a), CFrame.new(b), progress).p
+            currentCar:SetPrimaryPartCFrame(CFrame.new(newPos))
+        end)
+    end)
+end
+
+-- ====== Ações destrutivas (protegidas) ======
+local function shutdownServer()
+    if not CONFIRM_DESTRUCTIVE then
+        warn("Shutdown bloqueado: defina CONFIRM_DESTRUCTIVE = true para habilitar.")
+        return
+    end
+    if debounce("shutdown", 10) then return end
+
+    -- tentativa segura: executar algumas ações conhecidas
+    local carRemote = getRemote("1Ca1r")
+    for i = 1, 30 do
+        pcall(function()
+            if carRemote then carRemote:FireServer("PickingBoat", "MilitaryBoatFree") end
+        end)
+        task.wait(0.05)
+    end
+    -- teleporta temporariamente para fora do mapa e volta
+    local char = getCharacter(LocalPlayer)
+    local oldcf = char.HumanoidRootPart.CFrame
+    char.HumanoidRootPart.CFrame = CFrame.new(999999, -500, 999999)
+    repeat task.wait() until not char or not char.Parent
+    -- espera respawn
+    repeat task.wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    LocalPlayer.Character.HumanoidRootPart.CFrame = oldcf
+    print("Shutdown routine executada (parcial).")
+end
+
+local function deleteAllVehicles()
+    if not CONFIRM_DESTRUCTIVE then
+        warn("DeleteAllVehicles bloqueado: defina CONFIRM_DESTRUCTIVE = true para habilitar.")
+        return
+    end
+    local carRemote = getRemote("1Ca1r")
+    if carRemote then
+        pcall(function() carRemote:FireServer("DeleteAllVehicles") end)
+    end
+end
+
+-- ====== UI Buttons ======
+local TabMain = Window:MakeTab({"Main", "home"})
+TabMain:AddButton({
+    Name = "Ativar Annoy do Wx",
+    Callback = function()
+        if not selectedPlayerName then warn("Selecione um jogador primeiro!") return end
+        print("Annoy do Wx ativado para:", selectedPlayerName)
+        AnnoyLoop()
+    end
+})
+
+local TabTestingTornado = Window:MakeTab({"Testing Tornado", "home"})
+TabTestingTornado:AddButton({
+    Name = "Ativar Tornado PirateFree",
+    Callback = function()
+        print("Tornado PirateFree ativado!")
+        TornadoPirateFree()
+    end
+})
+
+TabMain:AddButton({
+    Name = "Ativar Annoy + Tornado",
+    Callback = function()
+        if not selectedPlayerName then warn("Selecione um jogador primeiro!") return end
+        print("Annoy do Wx + Tornado ativados para:", selectedPlayerName)
+        AnnoyLoop()
+        TornadoPirateFree()
+    end
+})
+
+local TabExperimental = Window:MakeTab({"OP / Experimental", "home"})
+TabExperimental:AddSection({"Script secreto (vazamento = ban)"})
+TabExperimental:AddButton({
+    Name = "Spawn - Factory (experimental)",
+    Callback = function()
+        -- spawn de factory (validações)
+        local char = getCharacter(LocalPlayer)
+        local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+        if not Remotes then warn("Remotes não encontrado.") return end
+        pcall(function()
+            char.HumanoidRootPart.CFrame = CFrame.new(-37, 19, -145)
+            Remotes:WaitForChild("Lot:Claim"):InvokeServer(6)
+            Remotes:WaitForChild("Lot:BuildProperty"):FireServer(6, "001_Landmark")
+            print("Spawn da Factory Praça testing 001 executado (tentativa).")
+        end)
+    end
+})
+
+-- Car Tab simplificado
+local CarTab = Window:MakeTab({"Carro", "car"})
+CarTab:AddButton({
+    Name = "Bring All Cars (teleportar para você)",
+    Callback = function()
+        for _, v in next, (workspace:FindFirstChild("Vehicles") or {}) do
+            if v.PrimaryPart and LocalPlayer.Character then
+                pcall(function() v:SetPrimaryPartCFrame(LocalPlayer.Character:GetPrimaryPartCFrame()) end)
+            end
+        end
+    end
+})
+
+local AdminTab = Window:MakeTab({"Admin", "home"})
+AdminTab:AddButton({
+    Name = "Annoy the entire server (loop seguro)",
+    Callback = function()
+        if debounce("annoy_all", 10) then return end
+        task.spawn(function()
+            while true do
+                clearTools()
+                requestTool("Assault")
+                local tries = 0
+                while not hasTool("Assault") and tries < 20 do
+                    task.wait(0.2); tries = tries + 1
+                end
+                if hasTool("Assault") then
+                    for _, pl in ipairs(Players:GetPlayers()) do
+                        if pl ~= LocalPlayer and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then
+                            safeFire(pl.Character.HumanoidRootPart, 1e14, 25)
+                            task.wait(0.1)
+                        end
+                    end
+                end
+                task.wait(1)
+            end
+        end)
+    end
+})
+
+-- Proteções e instruções finais
+print("Script carregado. Leia as variáveis no topo (CONFIRM_DESTRUCTIVE). Use com responsabilidade.")
