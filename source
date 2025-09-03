@@ -905,4 +905,186 @@ CarTab:AddButton({
 local AdminTab = Window:MakeTab({"Admin", "home"})
 
 AdminTab:AddButton({
-     Name = "Annoy the entire server!"
+     Name = "Annoy server 9e16 version"
+     Callback = function()
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+local RE = ReplicatedStorage:WaitForChild("RE")
+local ClearEvent = RE:FindFirstChild("1Clea1rTool1s")
+local ToolEvent = RE:FindFirstChild("1Too1l")
+local FireEvent = RE:FindFirstChild("1Gu1n")
+
+-- Limpa todas as ferramentas
+local function clearAllTools()
+	if ClearEvent then
+		ClearEvent:FireServer("ClearAllTools")
+	end
+end
+
+-- Solicita a arma
+local function getAssault()
+	if ToolEvent then
+		ToolEvent:InvokeServer("PickingTools", "Assault")
+	end
+end
+
+-- Verifica se a arma foi pega
+local function hasAssault()
+	return LocalPlayer.Backpack:FindFirstChild("Assault") ~= nil
+end
+
+-- Dispara contra uma parte
+local function fireAtPart(targetPart)
+	local gunScript = LocalPlayer.Backpack:FindFirstChild("Assault")
+		and LocalPlayer.Backpack.Assault:FindFirstChild("GunScript_Local")
+
+	if not gunScript or not targetPart then return end
+
+	local args = {
+		targetPart,
+		targetPart,
+		Vector3.new(9e16, 9e16, 9e16),
+		targetPart.Position,
+		gunScript:FindFirstChild("MuzzleEffect"),
+		gunScript:FindFirstChild("HitEffect"),
+		0,
+		0,
+		{ false },
+		{
+			25,
+			Vector3.new(1000, 1000, 1000),
+			BrickColor.new(29),
+			0.25,
+			Enum.Material.SmoothPlastic,
+			0.25
+		},
+		true,
+		false
+	}
+
+	FireEvent:FireServer(unpack(args))
+end
+
+-- Atira em todos os jogadores
+local function fireAtAllPlayers(times)
+	for i = 1, times do
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+				fireAtPart(player.Character.HumanoidRootPart)
+				task.wait(0.1)
+			end
+		end
+	end
+end
+
+-- Função principal em loop infinito até equipar a arma
+task.spawn(function()
+	while true do
+		clearAllTools()
+		getAssault()
+
+		repeat
+			task.wait(0.2)
+		until hasAssault()
+
+		fireAtAllPlayers(3)
+
+		task.wait(1)
+	end
+end)
+end
+})
+AdminTab:AddButton({
+     Name = "Annoy the entire server! (1e14 version)"
+     Callback = function()
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+local RE = ReplicatedStorage:WaitForChild("RE")
+local ClearEvent = RE:FindFirstChild("1Clea1rTool1s")
+local ToolEvent = RE:FindFirstChild("1Too1l")
+local FireEvent = RE:FindFirstChild("1Gu1n")
+
+-- Limpa todas as ferramentas
+local function clearAllTools()
+	if ClearEvent then
+		ClearEvent:FireServer("ClearAllTools")
+	end
+end
+
+-- Solicita a arma
+local function getAssault()
+	if ToolEvent then
+		ToolEvent:InvokeServer("PickingTools", "Assault")
+	end
+end
+
+-- Verifica se a arma foi pega
+local function hasAssault()
+	return LocalPlayer.Backpack:FindFirstChild("Assault") ~= nil
+end
+
+-- Dispara contra uma parte
+local function fireAtPart(targetPart)
+	local gunScript = LocalPlayer.Backpack:FindFirstChild("Assault")
+		and LocalPlayer.Backpack.Assault:FindFirstChild("GunScript_Local")
+
+	if not gunScript or not targetPart then return end
+
+	local args = {
+		targetPart,
+		targetPart,
+		Vector3.new(1e14, 1e14, 1e14),
+		targetPart.Position,
+		gunScript:FindFirstChild("MuzzleEffect"),
+		gunScript:FindFirstChild("HitEffect"),
+		0,
+		0,
+		{ false },
+		{
+			25,
+			Vector3.new(100, 100, 100),
+			BrickColor.new(29),
+			0.25,
+			Enum.Material.SmoothPlastic,
+			0.25
+		},
+		true,
+		false
+	}
+
+	FireEvent:FireServer(unpack(args))
+end
+
+-- Atira em todos os jogadores
+local function fireAtAllPlayers(times)
+	for i = 1, times do
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+				fireAtPart(player.Character.HumanoidRootPart)
+				task.wait(0.1)
+			end
+		end
+	end
+end
+
+-- Função principal em loop infinito até equipar a arma
+task.spawn(function()
+	while true do
+		clearAllTools()
+		getAssault()
+
+		repeat
+			task.wait(0.2)
+		until hasAssault()
+
+		fireAtAllPlayers(3)
+
+		task.wait(1)
+	end
+end)
+end
+})
