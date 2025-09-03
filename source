@@ -901,3 +901,8 @@ CarTab:AddButton({
         end
     end
 })
+
+local AdminTab = Window:MakeTab({"Admin", "home"})
+
+AdminTab:AddButton({
+     Name = "Annoy the entire server!"
