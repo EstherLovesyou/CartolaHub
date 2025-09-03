@@ -1,0 +1,357 @@
+local cartolalib = loadstring(game:HttpGet("https://raw.githubusercontent.com/wx-sources/CartolaLibrary/refs/heads/main/Redzhubui%20(1).txt"))()
+
+local Window = cartolalib:MakeWindow({
+Title = "Cartola Hub       ",
+SubTitle = "by EstherDeveloper and Davi999",
+SaveFolder = "CartolaLibrary"
+})
+
+-- Abas
+local TabMain = Window:MakeTab({"Main", "home"})
+local TabAudio = Window:MakeTab({"Audio", "home"})
+local TabExperimental = Window:MakeTab({"OP / Experimental", "home"})
+local TabTestingTornado = Window:MakeTab({"Testing Tornado", "home"})
+
+-- Seções
+local SectionTestes = TabMain:AddSection({"Testes Annoy e Tornado"})
+local SectionTornado = TabTestingTornado:AddSection({"Testes tornado"})
+
+-- Variáveis
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TextChatService = game:GetService("TextChatService")
+
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+local Vehicles = workspace:WaitForChild("Vehicles")
+
+local RE = ReplicatedStorage:WaitForChild("RE")
+local ClearEvent = RE:FindFirstChild("1Clea1rTool1s")
+local ToolEvent = RE:FindFirstChild("1Too1l")
+local FireEvent = RE:FindFirstChild("1Gu1n")
+
+-- Dropdown de jogadores
+local PlayerNames = {}
+for _, p in ipairs(Players:GetPlayers()) do
+table.insert(PlayerNames, p.Name)
+end
+
+local selectedPlayerName = nil
+local Dropdown = TabMain:AddDropdown({
+Name = "Selecionar Jogador",
+Description = "Escolha um jogador da lista",
+Options = PlayerNames,
+Default = PlayerNames[1] or "",
+Callback = function(Value)
+selectedPlayerName = Value
+print("Jogador selecionado:", Value)
+end
+})
+
+-- =====================
+-- Funções Annoy do Wx
+-- =====================
+local FlingSystem = { power = 1e14, damage = 999999, interval = 0.02 }
+
+local function clearTools()
+if ClearEvent then
+ClearEvent:FireServer("ClearAllTools")
+end
+end
+
+local function requestAssault()
+if ToolEvent then
+ToolEvent:InvokeServer("PickingTools", "Assault")
+end
+end
+
+local function hasWeapon()
+return Player.Backpack:FindFirstChild("Assault") or (Character and Character:FindFirstChild("Assault"))
+end
+
+local function equipWeapon()
+local weapon = Player.Backpack:FindFirstChild("Assault")
+if weapon and Character then
+local humanoid = Character:FindFirstChild("Humanoid")
+if humanoid then
+humanoid:EquipTool(weapon)
+return true
+end
+end
+return false
+end
+
+local function getGunScript()
+if Character then
+local weapon = Character:FindFirstChild("Assault") or Player.Backpack:FindFirstChild("Assault")
+if weapon then
+return weapon:FindFirstChild("GunScript_Local")
+end
+end
+return nil
+end
+
+local function executeShot(targetPart)
+local gunScript = getGunScript()
+if not gunScript or not targetPart or not FireEvent then return end
+
+local args = {  
+    targetPart,  
+    targetPart,  
+    Vector3.new(FlingSystem.power, FlingSystem.power, FlingSystem.power),  
+    targetPart.Position,  
+    gunScript:FindFirstChild("MuzzleEffect"),  
+    gunScript:FindFirstChild("HitEffect"),  
+    0,  
+    0,  
+    { false },  
+    {  
+        FlingSystem.damage,  
+        Vector3.new(1000, 1000, 1000),  
+        BrickColor.new(29),  
+        0.25,  
+        Enum.Material.SmoothPlastic,  
+        0.25  
+    },  
+    true,  
+    false  
+}  
+
+FireEvent:FireServer(unpack(args))
+
+end
+
+local function getSelectedTarget()
+if not selectedPlayerName then return nil end
+local player = Players:FindFirstChild(selectedPlayerName)
+if player and player.Character then
+local humanoid = player.Character:FindFirstChild("Humanoid")
+local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+if humanoid and rootPart and humanoid.Health > 0 then
+return { player = player, part = rootPart }
+end
+end
+return nil
+end
+
+local function flingTarget()
+local target = getSelectedTarget()
+if target then
+executeShot(target.part)
+local head = target.player.Character:FindFirstChild("Head")
+if head then executeShot(head) end
+local torso = target.player.Character:FindFirstChild("Torso") or target.player.Character:FindFirstChild("UpperTorso")
+if torso then executeShot(torso) end
+end
+end
+
+local function maintainWeapon()
+if not hasWeapon() then
+clearTools()
+task.wait(0.1)
+requestAssault()
+task.wait(0.2)
+
+local attempts = 0  
+    while not hasWeapon() and attempts < 20 do  
+        task.wait(0.1)  
+        attempts = attempts + 1  
+    end  
+
+    if hasWeapon() then  
+        equipWeapon()  
+    end  
+end
+
+end
+
+function AnnoyDoWx()
+maintainWeapon()
+task.spawn(function()
+while true do
+maintainWeapon()
+if hasWeapon() and getGunScript() then
+flingTarget()
+end
+task.wait(FlingSystem.interval)
+end
+end)
+end
+
+-- =====================
+-- Função Tornado PirateFree
+-- =====================
+local function TornadoPirateFree()
+-- Aviso no chat
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+TextChatService.TextChannels.RBXGeneral:SendAsync(
+"[⚠️AVISO] UM TORNADO SURGIU! Cartola Hub by Esther"
+)
+end
+
+-- Áudio  
+local selectedAudioID = 9068077052  
+local function playAudio()  
+    local args = { workspace, selectedAudioID, 1 }  
+    for i = 1, 5 do  
+        if RE:FindFirstChild("1Gu1nSound1s") then  
+            RE["1Gu1nSound1s"]:FireServer(unpack(args))  
+        end  
+
+        local sound = Instance.new("Sound")  
+        sound.SoundId = "rbxassetid://" .. tostring(selectedAudioID)  
+        sound.Parent = RootPart  
+        sound:Play()  
+        task.wait(1.5)  
+        sound:Destroy()  
+    end  
+end  
+
+-- Spawn do barco  
+local function spawnBoat()  
+    RootPart.CFrame = CFrame.new(1754, -2, 58)  
+    task.wait(0.5)  
+    if RE:FindFirstChild("1Ca1r") then  
+        RE["1Ca1r"]:FireServer("PickingBoat", "PirateFree")  
+    end  
+    task.wait(1)  
+    return Vehicles:FindFirstChild(Player.Name .. "Car")  
+end  
+
+local PCar = spawnBoat()  
+if not PCar then warn("Falha ao spawnar o barco") return end  
+
+local Seat = PCar:FindFirstChild("Body") and PCar.Body:FindFirstChild("VehicleSeat")  
+if not Seat then warn("Seat não encontrado") return end  
+
+-- Sentar no assento  
+repeat  
+    task.wait(0.1)  
+    RootPart.CFrame = Seat.CFrame * CFrame.new(0, 1, 0)  
+until Humanoid.SeatPart == Seat  
+
+-- Tocar áudio em paralelo  
+task.spawn(playAudio)  
+
+-- Ejetar após 4s  
+task.delay(4, function()  
+    if Humanoid.SeatPart then Humanoid.Sit = false end  
+    RootPart.CFrame = CFrame.new(0,0,0)  
+end)  
+
+-- Flip loop  
+if RE:FindFirstChild("1Player1sCa1r") then  
+    local RE_Flip = RE["1Player1sCa1r"]  
+    task.spawn(function()  
+        while PCar and PCar.Parent do  
+            RE_Flip:FireServer("Flip")  
+            task.wait(0.5)  
+        end  
+    end)  
+end  
+
+-- Movimento do barco  
+local waypoints = {  
+    Vector3.new(-16, 0, -47),  
+    Vector3.new(-110, 0, -45),  
+    Vector3.new(16, 0, -55)  
+}  
+
+local currentIndex, nextIndex = 1, 2  
+local moveSpeed = 15  
+local rotationSpeed = math.rad(720)  
+local progress, currentRotation = 0, 0  
+
+local function lerpCFrame(a, b, t)  
+    return a:lerp(b, t)  
+end  
+
+RunService.Heartbeat:Connect(function(dt)  
+    if not (PCar and PCar.PrimaryPart) then return end  
+    local startPos = waypoints[currentIndex]  
+    local endPos = waypoints[nextIndex]  
+    progress += (moveSpeed * dt) / (startPos - endPos).Magnitude  
+    if progress >= 1 then  
+        progress = 0  
+        currentIndex = nextIndex  
+        nextIndex = (nextIndex % #waypoints) + 1  
+    end  
+    local newPos = lerpCFrame(CFrame.new(startPos), CFrame.new(endPos), progress).p  
+    currentRotation += rotationSpeed * dt  
+    local cf = CFrame.new(newPos) * CFrame.Angles(0, currentRotation, 0)  
+    PCar:SetPrimaryPartCFrame(cf)  
+end)
+
+end
+
+-- =====================
+-- Botões no Hub
+-- =====================
+TabMain:AddButton({
+Name = "Ativar Annoy do Wx",
+Callback = function()
+if not selectedPlayerName then
+warn("Selecione um jogador primeiro!")
+return
+end
+print("Annoy do Wx ativado para: "..selectedPlayerName)
+AnnoyDoWx()
+end
+})
+
+TabTestingTornado:AddButton({
+Name = "Ativar Tornado PirateFree",
+Callback = function()
+TornadoPirateFree()
+print("Tornado PirateFree ativado!")
+end
+})
+
+TabMain:AddButton({
+Name = "Ativar Annoy + Tornado",
+Callback = function()
+if not selectedPlayerName then
+warn("Selecione um jogador primeiro!")
+return
+end
+print("Annoy do Wx + Tornado ativados para: "..selectedPlayerName)
+AnnoyDoWx()
+TornadoPirateFree()
+end
+})
+
+-- Seção informativa
+TabExperimental:AddSection({"Script secreto (vazamento = ban)"})
+
+-- Botão diretamente na aba
+TabExperimental:AddButton({
+Name = "Spawn - Factory",
+Callback = function()
+local player = game.Players.LocalPlayer
+local targetPosition = Vector3.new(-37, 19, -145)
+
+if not player.Character or not player.Character:FindFirstChild("Humanoid") then  
+        player.CharacterAdded:Wait()  
+    end  
+
+    local character = player.Character  
+    local humanoid = character:WaitForChild("Humanoid")  
+
+    humanoid:MoveTo(targetPosition)  
+    humanoid.MoveToFinished:Wait()  
+
+    local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")  
+
+    local args1 = {6}  
+    Remotes:WaitForChild("Lot:Claim"):InvokeServer(unpack(args1))  
+
+    local args2 = {6, "001_Landmark"}  
+    Remotes:WaitForChild("Lot:BuildProperty"):FireServer(unpack(args2))  
+
+    print("Spawn da Factory Praça testing 001 executado!")  
+end
+
+})
